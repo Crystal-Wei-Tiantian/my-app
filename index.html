@@ -6,6 +6,15 @@
     <title>我的第一个App</title>
     <link rel="manifest" href="manifest.json">
 </head>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW registered', reg))
+        .catch(err => console.log('SW failed', err));
+    });
+  }
+</script>
 <body>
     <h1>你好，Vibe!</h1>
     <p>如果你看到这行字，说明你的网页已经可以运行了。</p>
