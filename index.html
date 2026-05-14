@@ -18,8 +18,7 @@
       padding-bottom: 20px;
       -webkit-tap-highlight-color: transparent;
     }
-    /* 限制 user-select 只在非输入元素上 */
-    header, .tabs, .card, .year-header, .month-header, .empty-state, .toolbar {
+    header, .tabs, .card, .year-header, .month-header, .empty-state, .toolbar, .filter-bar {
       user-select: none;
     }
     header {
@@ -59,6 +58,29 @@
       font-weight: 500;
     }
     main { padding: 12px 16px; }
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e8e2d7;
+    }
+    .filter-btn {
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 14px;
+      border: 1px solid #d5cfc4;
+      background: #fdfaf5;
+      color: #6a6a6a;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn.active {
+      background: #8a9a82;
+      color: white;
+      border-color: #8a9a82;
+    }
     .year-header, .month-header {
       padding: 10px 4px 6px;
       font-size: 14px;
@@ -131,9 +153,9 @@
       border-radius: 10px;
       font-weight: 500;
     }
-    .status-want { background: #e8e2d7; color: #7a7a7a; }
-    .status-doing { background: #d5e0d5; color: #5a7a5a; }
-    .status-done { background: #c5d5c5; color: #4a6a4a; }
+    .status-want { background: #e8ddd0; color: #8b7a65; }
+    .status-doing { background: #bfcdb5; color: #4a5a3f; }
+    .status-done { background: #9cad94; color: #3a4a32; }
     .stars { color: #c9a96e; font-size: 14px; letter-spacing: 1px; }
     .card-review {
       font-size: 12px;
@@ -162,7 +184,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    }
     }
     .card-actions button:hover { color: #6b7d6b; background: #f0ede5; }
     .add-btns {
@@ -207,18 +228,19 @@
     .add-movie-tv button {
       padding: 12px 20px;
       border-radius: 24px;
-      background: #fdfaf5;
-      color: #6b7d6b;
-      border: 1px solid #d5cfc4;
+      background: #8a9a82;
+      color: white;
+      border: none;
       font-size: 15px;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 8px rgba(138,154,130,0.3);
       display: flex;
       align-items: center;
       gap: 6px;
       white-space: nowrap;
+      transition: opacity 0.15s;
     }
-    .add-movie-tv button:hover { background: #f0ede5; }
+    .add-movie-tv button:hover { opacity: 0.9; }
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -332,14 +354,11 @@
   </header>
   <main id="main-content"></main>
   
-  <!-- 根据 tab 动态切换的添加按钮区域 -->
   <div class="add-btns" id="addBtns">
-    <!-- 书架时的单个按钮（默认） -->
     <button class="add-btn" id="addBookBtn">+</button>
-    <!-- 影库时的双按钮，初始隐藏 -->
     <div class="add-movie-tv hidden" id="addMovieTvBtns">
-      <button id="addMovieBtn">🎬 电影</button>
-      <button id="addTvBtn">📺 电视剧</button>
+      <button id="addMovieBtn">＋ 电影</button>
+      <button id="addTvBtn">＋ 电视剧</button>
     </div>
   </div>
 
@@ -350,13 +369,20 @@
   <script>
     // ============ 数据层 ============
     const STORAGE_KEY = 'shuying_data';
+    const FILTER_STORAGE_KEY = 'shuying_filters';
     let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     let currentTab = 'books';
     let editingId = null;
-    let modalOpen = false;  // 控制异步安全
+    let modalOpen = false;
+
+    // 筛选状态：{ books: { status: 'all'|'想读'|'在读'|'已读' }, media: { type: 'all'|'movie'|'tv', status: 'all'|'想看'|'在看'|'看过' } }
+    let filters = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{"books":{"status":"all"},"media":{"type":"all","status":"all"}}');
 
     function save() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+    function saveFilters() {
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
     }
 
     function exportData() {
@@ -391,6 +417,28 @@
       return records.filter(r => r.type === 'movie' || r.type === 'tv');
     }
 
+    function applyFilters(recs) {
+      if (currentTab === 'books') {
+        const status = filters.books.status;
+        if (status !== 'all') {
+          recs = recs.filter(r => r.readingStatus === status);
+        }
+      } else {
+        const type = filters.media.type;
+        const status = filters.media.status;
+        if (type !== 'all') {
+          recs = recs.filter(r => r.type === type);
+        }
+        if (status !== 'all') {
+          recs = recs.filter(r => {
+            if (r.type === 'tv') return r.progressStatus === status;
+            return r.status === status;
+          });
+        }
+      }
+      return recs;
+    }
+
     function groupByYearMonth(recs) {
       const groups = {};
       recs.forEach(r => {
@@ -422,11 +470,15 @@
       let meta = '';
       if (r.type === 'book') meta = r.author || '';
       else if (r.type === 'movie' || r.type === 'tv') meta = r.creators || '';
-      // 电视剧进度显示修复
-      if (r.type === 'tv' && r.currentEp) {
-        meta += (meta?' · ':'') + `已看${r.currentEp}集` + (r.totalEp ? `/${r.totalEp}集` : '');
+      // 电视剧进度修复
+      if (r.type === 'tv' && r.currentEp && String(r.currentEp).trim() !== '') {
+        let progressStr = `已看${r.currentEp}集`;
+        if (r.totalEp && String(r.totalEp).trim() !== '') {
+          progressStr += `/${r.totalEp}集`;
+        }
+        meta += (meta ? ' · ' : '') + progressStr;
       }
-      // 标签显示
+      // 标签
       let tagsHtml = '';
       if (r.tags && r.tags.length > 0) {
         tagsHtml = r.tags.map(t => `<span style="background:#e8e2d7;color:#6a6a6a;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:4px;">${escapeHtml(t)}</span>`).join('');
@@ -454,10 +506,38 @@
       `;
     }
 
+    function renderFilterBar() {
+      let html = '<div class="filter-bar">';
+      if (currentTab === 'books') {
+        const statuses = ['all','想读','在读','已读'];
+        const labels = ['全部','想读','在读','已读'];
+        statuses.forEach((s, i) => {
+          html += `<button class="filter-btn ${filters.books.status === s ? 'active' : ''}" data-filter="books-status" data-value="${s}">${labels[i]}</button>`;
+        });
+      } else {
+        // 类型筛选
+        const types = ['all','movie','tv'];
+        const typeLabels = ['全部','🎬 电影','📺 电视剧'];
+        types.forEach((t, i) => {
+          html += `<button class="filter-btn ${filters.media.type === t ? 'active' : ''}" data-filter="media-type" data-value="${t}">${typeLabels[i]}</button>`;
+        });
+        html += '<span style="color:#d5cfc4;margin:0 4px;">|</span>';
+        // 状态筛选
+        const statuses = ['all','想看','在看','看过'];
+        const statusLabels = ['全部','想看','在看','看过'];
+        statuses.forEach((s, i) => {
+          html += `<button class="filter-btn ${filters.media.status === s ? 'active' : ''}" data-filter="media-status" data-value="${s}">${statusLabels[i]}</button>`;
+        });
+      }
+      html += '</div>';
+      return html;
+    }
+
     function render() {
       const main = document.getElementById('main-content');
-      const recs = getRecordsForTab();
+      let recs = getRecordsForTab();
       recs.sort((a,b) => (b.addedAt||0) - (a.addedAt||0));
+      recs = applyFilters(recs);
       const groups = groupByYearMonth(recs);
       
       let html = '<div class="toolbar">';
@@ -466,8 +546,11 @@
       html += '</div>';
       html += '<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this.files[0])">';
       
+      // 筛选栏
+      html += renderFilterBar();
+      
       if (groups.length === 0) {
-        html += `<div class="empty-state"><div class="icon">📭</div><p>还没有记录，点击 + 添加第一条吧</p></div>`;
+        html += `<div class="empty-state"><div class="icon">📭</div><p>没有符合条件的记录</p></div>`;
       } else {
         groups.forEach((yearGroup) => {
           const yearId = `year-${currentTab}-${yearGroup.year}`;
@@ -486,7 +569,24 @@
       }
       main.innerHTML = html;
 
-      // 根据 tab 切换底部添加按钮
+      // 绑定筛选按钮事件
+      main.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const filter = this.dataset.filter;
+          const value = this.dataset.value;
+          if (filter === 'books-status') {
+            filters.books.status = value;
+          } else if (filter === 'media-type') {
+            filters.media.type = value;
+          } else if (filter === 'media-status') {
+            filters.media.status = value;
+          }
+          saveFilters();
+          render();
+        });
+      });
+
+      // 切换底部添加按钮
       document.getElementById('addBookBtn').classList.toggle('hidden', currentTab !== 'books');
       document.getElementById('addMovieTvBtns').classList.toggle('hidden', currentTab !== 'media');
     }
@@ -538,7 +638,6 @@
       document.getElementById('modal').innerHTML = html;
       document.getElementById('modalOverlay').classList.remove('hidden');
 
-      // 状态切换逻辑
       const statusSelect = document.getElementById('fStatus');
       if (statusSelect) {
         statusSelect.addEventListener('change', function() {
@@ -555,7 +654,6 @@
         });
       }
 
-      // 图片预览
       const imgFile = document.getElementById('fImageFile');
       const imgUrl = document.getElementById('fImageUrl');
       const imgPreview = document.getElementById('fImagePreview');
@@ -571,7 +669,6 @@
         imgPreview.src = imgUrl.value; imgPreview.style.display = imgUrl.value ? 'block' : 'none';
       });
 
-      // 评分星星
       document.querySelectorAll('#ratingStars span').forEach(star => {
         star.addEventListener('click', function() {
           const val = parseInt(this.dataset.val);
@@ -622,16 +719,15 @@
         data.date = document.getElementById('fDate')?.value;
       }
 
-      // 图片处理
       if (imageFile) {
         const reader = new FileReader();
         reader.onload = () => {
-          if (!modalOpen) return;  // 关键修复：模态框已关闭则放弃保存
+          if (!modalOpen) return;
           data.image = reader.result;
           finalizeSave(data);
         };
         reader.readAsDataURL(imageFile);
-        return null; // 异步
+        return null;
       } else {
         data.image = imageUrl || '';
         return data;
@@ -639,7 +735,7 @@
     }
 
     function finalizeSave(data) {
-      if (!modalOpen) return; // 再次检查
+      if (!modalOpen) return;
       if (editingId) {
         const idx = records.findIndex(r => r.id === editingId);
         if (idx > -1) records[idx] = { ...records[idx], ...data };
@@ -654,7 +750,7 @@
 
     function saveRecord(type) {
       const data = getFormData(type);
-      if (data === null) return; // 等待图片异步
+      if (data === null) return;
       if (!data.title) { alert('请输入标题'); return; }
       finalizeSave(data);
     }
@@ -665,7 +761,6 @@
       showModal(r.type, r);
     }
 
-    // 返回布尔值以控制后续行为
     function deleteRecord(id) {
       if (!confirm('确定要删除这条记录吗？')) return false;
       records = records.filter(r => r.id !== id);
@@ -684,7 +779,6 @@
       });
     });
 
-    // 添加按钮
     document.getElementById('addBookBtn').addEventListener('click', () => showModal('book'));
     document.getElementById('addMovieBtn').addEventListener('click', () => showModal('movie'));
     document.getElementById('addTvBtn').addEventListener('click', () => showModal('tv'));
@@ -693,7 +787,7 @@
       if (e.target === this) closeModal();
     });
 
-    // 初始渲染
+    // 初始示例数据
     if (records.length === 0) {
       const now = Date.now();
       records = [
@@ -707,7 +801,6 @@
     }
     render();
 
-    // Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
     }
