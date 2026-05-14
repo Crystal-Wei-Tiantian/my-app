@@ -147,63 +147,76 @@
       top: 8px;
       right: 8px;
       display: flex;
-      gap: 4px;
+      gap: 10px;
     }
     .card-actions button {
       background: none;
       border: none;
-      font-size: 14px;
+      font-size: 18px;
       cursor: pointer;
-      padding: 4px;
+      padding: 6px 8px;
       color: #b0b0b0;
-      border-radius: 4px;
-    }
-    .card-actions button:hover { color: #6b7d6b; background: #f0ede5; }
-    .add-btns {
-      position: fixed;
-      bottom: 24px;
-      right: calc(50% - 300px + 16px);
-      z-index: 20;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: flex-end;
-    }
-    @media (max-width: 600px) {
-      .add-btns { right: 16px; }
-    }
-    .add-btn {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background: #8a9a82;
-      color: white;
-      border: none;
-      font-size: 26px;
-      cursor: pointer;
-      box-shadow: 0 2px 12px rgba(138,154,130,0.3);
+      border-radius: 6px;
+      min-width: 36px;
+      min-height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+    }
+    .card-actions button:hover { color: #6b7d6b; background: #f0ede5; }
+    .add-btns {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    @media (max-width: 600px) {
+      .add-btns { bottom: 24px; }
+    }
+    .add-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: #8a9a82;
+      color: white;
+      border: none;
+      font-size: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(138,154,130,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .add-btn:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 8px rgba(138,154,130,0.25);
+    }
     .add-btn:hover { background: #7a8a72; }
     .add-movie-tv {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }
     .add-movie-tv button {
-      padding: 8px 14px;
-      border-radius: 20px;
+      padding: 12px 20px;
+      border-radius: 24px;
       background: #fdfaf5;
       color: #6b7d6b;
       border: 1px solid #d5cfc4;
-      font-size: 13px;
+      font-size: 15px;
       cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      white-space: nowrap;
     }
     .add-movie-tv button:hover { background: #f0ede5; }
     .modal-overlay {
