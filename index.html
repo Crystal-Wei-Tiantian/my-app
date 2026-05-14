@@ -1,22 +1,703 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的第一个App</title>
-    <link rel="manifest" href="manifest.json">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#8a9a82">
+  <title>书影</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: #f5f0e8;
+      color: #4a4a4a;
+      max-width: 600px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding-bottom: 20px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 限制 user-select 只在非输入元素上 */
+    header, .tabs, .card, .year-header, .month-header, .empty-state, .toolbar {
+      user-select: none;
+    }
+    header {
+      padding: 20px 16px 0;
+      position: sticky;
+      top: 0;
+      background: #f5f0e8;
+      z-index: 10;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 400;
+      color: #6b7d6b;
+      letter-spacing: 2px;
+    }
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-top: 16px;
+      border-bottom: 1px solid #d5cfc4;
+    }
+    .tab {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      color: #9a9a9a;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .tab.active {
+      color: #6b7d6b;
+      border-bottom-color: #8a9a82;
+      font-weight: 500;
+    }
+    main { padding: 12px 16px; }
+    .year-header, .month-header {
+      padding: 10px 4px 6px;
+      font-size: 14px;
+      color: #8a9a82;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px dashed #d5cfc4;
+      margin-top: 8px;
+    }
+    .year-header { font-size: 16px; font-weight: 500; }
+    .year-header .arrow, .month-header .arrow {
+      transition: transform 0.2s;
+      display: inline-block;
+    }
+    .year-header.collapsed .arrow, .month-header.collapsed .arrow {
+      transform: rotate(-90deg);
+    }
+    .year-group.collapsed .month-group,
+    .month-group.collapsed .cards {
+      display: none;
+    }
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .card {
+      background: #fdfaf5;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      display: flex;
+      gap: 12px;
+      position: relative;
+    }
+    .card img {
+      width: 60px;
+      height: 85px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #e8e2d7;
+      flex-shrink: 0;
+    }
+    .card-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #3a3a3a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-meta {
+      font-size: 12px;
+      color: #8a8a8a;
+    }
+    .card-status {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .status-want { background: #e8e2d7; color: #7a7a7a; }
+    .status-doing { background: #d5e0d5; color: #5a7a5a; }
+    .status-done { background: #c5d5c5; color: #4a6a4a; }
+    .stars { color: #c9a96e; font-size: 14px; letter-spacing: 1px; }
+    .card-review {
+      font-size: 12px;
+      color: #7a7a7a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 4px;
+    }
+    .card-actions button {
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px;
+      color: #b0b0b0;
+      border-radius: 4px;
+    }
+    .card-actions button:hover { color: #6b7d6b; background: #f0ede5; }
+    .add-btns {
+      position: fixed;
+      bottom: 24px;
+      right: calc(50% - 300px + 16px);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    @media (max-width: 600px) {
+      .add-btns { right: 16px; }
+    }
+    .add-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #8a9a82;
+      color: white;
+      border: none;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 2px 12px rgba(138,154,130,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .add-btn:hover { background: #7a8a72; }
+    .add-movie-tv {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .add-movie-tv button {
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: #fdfaf5;
+      color: #6b7d6b;
+      border: 1px solid #d5cfc4;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .add-movie-tv button:hover { background: #f0ede5; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 30;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal {
+      background: #fdfaf5;
+      border-radius: 16px 16px 0 0;
+      padding: 20px 16px 30px;
+      width: 100%;
+      max-width: 600px;
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal h3 {
+      font-size: 18px;
+      color: #6b7d6b;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      color: #8a8a8a;
+      margin-bottom: 4px;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d5cfc4;
+      border-radius: 8px;
+      font-size: 15px;
+      background: #faf7f0;
+      color: #4a4a4a;
+      font-family: inherit;
+    }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .form-group input[type="file"] { padding: 8px; }
+    .image-preview {
+      width: 80px;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #e8e2d7;
+      margin-top: 6px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn-save { background: #8a9a82; color: white; }
+    .btn-cancel { background: #e8e2d7; color: #6a6a6a; }
+    .btn-delete { background: #e0c5c0; color: #8a4a4a; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar button {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 14px;
+      border: 1px solid #d5cfc4;
+      background: #fdfaf5;
+      color: #6a6a6a;
+      cursor: pointer;
+    }
+    .toolbar button:hover { background: #f0ede5; }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #b0b0b0;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    input[type="file"] { font-size: 14px; }
+    .rating-stars { display: flex; gap: 4px; cursor: pointer; }
+    .rating-stars span { font-size: 24px; color: #d5cfc4; transition: color 0.15s; }
+    .rating-stars span.active { color: #c9a96e; }
+    .hidden { display: none !important; }
+  </style>
 </head>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('SW registered', reg))
-        .catch(err => console.log('SW failed', err));
-    });
-  }
-</script>
 <body>
-    <h1>你好，Vibe!</h1>
-    <p>如果你看到这行字，说明你的网页已经可以运行了。</p>
+  <header>
+    <h1>书影</h1>
+    <div class="tabs">
+      <button class="tab active" data-tab="books">📚 书架</button>
+      <button class="tab" data-tab="media">🎬 影库</button>
+    </div>
+  </header>
+  <main id="main-content"></main>
+  
+  <!-- 根据 tab 动态切换的添加按钮区域 -->
+  <div class="add-btns" id="addBtns">
+    <!-- 书架时的单个按钮（默认） -->
+    <button class="add-btn" id="addBookBtn">+</button>
+    <!-- 影库时的双按钮，初始隐藏 -->
+    <div class="add-movie-tv hidden" id="addMovieTvBtns">
+      <button id="addMovieBtn">🎬 电影</button>
+      <button id="addTvBtn">📺 电视剧</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script>
+    // ============ 数据层 ============
+    const STORAGE_KEY = 'shuying_data';
+    let records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    let currentTab = 'books';
+    let editingId = null;
+    let modalOpen = false;  // 控制异步安全
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+
+    function exportData() {
+      const blob = new Blob([JSON.stringify(records, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '书影备份_' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+    }
+
+    function importData(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (Array.isArray(data)) {
+            records = data;
+            save();
+            render();
+            alert('导入成功！');
+          }
+        } catch(e) {
+          alert('文件格式错误');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ============ 渲染 ============
+    function getRecordsForTab() {
+      if (currentTab === 'books') return records.filter(r => r.type === 'book');
+      return records.filter(r => r.type === 'movie' || r.type === 'tv');
+    }
+
+    function groupByYearMonth(recs) {
+      const groups = {};
+      recs.forEach(r => {
+        const d = new Date(r.addedAt || Date.now());
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1;
+        if (!groups[year]) groups[year] = {};
+        if (!groups[year][month]) groups[year][month] = [];
+        groups[year][month].push(r);
+      });
+      const sortedYears = Object.keys(groups).sort((a,b) => b-a);
+      return sortedYears.map(year => ({
+        year,
+        months: Object.keys(groups[year]).sort((a,b) => b-a).map(month => ({
+          month,
+          records: groups[year][month]
+        }))
+      }));
+    }
+
+    function renderCard(r) {
+      const statusMap = {
+        '想读':'status-want','在读':'status-doing','已读':'status-done',
+        '想看':'status-want','在看':'status-doing','看过':'status-done'
+      };
+      const statusText = r.status || (r.type==='tv' ? r.progressStatus : r.readingStatus) || '';
+      const statusClass = statusMap[statusText] || 'status-want';
+      const starsHtml = r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5-r.rating) : '';
+      let meta = '';
+      if (r.type === 'book') meta = r.author || '';
+      else if (r.type === 'movie' || r.type === 'tv') meta = r.creators || '';
+      // 电视剧进度显示修复
+      if (r.type === 'tv' && r.currentEp) {
+        meta += (meta?' · ':'') + `已看${r.currentEp}集` + (r.totalEp ? `/${r.totalEp}集` : '');
+      }
+      // 标签显示
+      let tagsHtml = '';
+      if (r.tags && r.tags.length > 0) {
+        tagsHtml = r.tags.map(t => `<span style="background:#e8e2d7;color:#6a6a6a;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:4px;">${escapeHtml(t)}</span>`).join('');
+      }
+      return `
+        <div class="card" data-id="${r.id}">
+          <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 60 85%22><rect fill=%22%23e8e2d7%22 width=%2260%22 height=%2285%22/><text x=%2230%22 y=%2245%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2212%22>暂无</text></svg>'}" alt="">
+          <div class="card-content">
+            <div class="card-title">${escapeHtml(r.title)}</div>
+            <div class="card-meta">
+              ${escapeHtml(meta)}
+              ${tagsHtml ? '<br>' + tagsHtml : ''}
+            </div>
+            <div>
+              <span class="card-status ${statusClass}">${escapeHtml(statusText)}</span>
+              ${r.rating ? `<span class="stars">${starsHtml}</span>` : ''}
+            </div>
+            <div class="card-review">${escapeHtml(r.review || '')}</div>
+          </div>
+          <div class="card-actions">
+            <button onclick="editRecord('${r.id}')" title="编辑">✎</button>
+            <button onclick="deleteRecord('${r.id}')" title="删除">✕</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function render() {
+      const main = document.getElementById('main-content');
+      const recs = getRecordsForTab();
+      recs.sort((a,b) => (b.addedAt||0) - (a.addedAt||0));
+      const groups = groupByYearMonth(recs);
+      
+      let html = '<div class="toolbar">';
+      html += '<button onclick="exportData()">📤 导出备份</button>';
+      html += '<button onclick="document.getElementById(\'importFile\').click()">📥 导入备份</button>';
+      html += '</div>';
+      html += '<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this.files[0])">';
+      
+      if (groups.length === 0) {
+        html += `<div class="empty-state"><div class="icon">📭</div><p>还没有记录，点击 + 添加第一条吧</p></div>`;
+      } else {
+        groups.forEach((yearGroup) => {
+          const yearId = `year-${currentTab}-${yearGroup.year}`;
+          html += `<div class="year-group" id="${yearId}">`;
+          html += `<div class="year-header" onclick="toggleGroup('${yearId}')"><span class="arrow">▼</span> ${yearGroup.year}年</div>`;
+          yearGroup.months.forEach(monthGroup => {
+            const monthId = `month-${currentTab}-${yearGroup.year}-${monthGroup.month}`;
+            html += `<div class="month-group" id="${monthId}">`;
+            html += `<div class="month-header" onclick="toggleGroup('${monthId}')"><span class="arrow">▼</span> ${monthGroup.month}月 (${monthGroup.records.length})</div>`;
+            html += `<div class="cards">`;
+            monthGroup.records.forEach(r => html += renderCard(r));
+            html += `</div></div>`;
+          });
+          html += `</div>`;
+        });
+      }
+      main.innerHTML = html;
+
+      // 根据 tab 切换底部添加按钮
+      document.getElementById('addBookBtn').classList.toggle('hidden', currentTab !== 'books');
+      document.getElementById('addMovieTvBtns').classList.toggle('hidden', currentTab !== 'media');
+    }
+
+    function toggleGroup(id) {
+      document.getElementById(id).classList.toggle('collapsed');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ============ 模态框 ============
+    function showModal(type, data = null) {
+      modalOpen = true;
+      editingId = data ? data.id : null;
+      const isBook = type === 'book';
+      const isTv = type === 'tv';
+      let html = `<h3>${data ? '编辑' : '添加'}${isBook ? '书籍' : isTv ? '电视剧' : '电影'}</h3>`;
+      html += `<div class="form-group"><label>${isBook ? '书名' : '片名'} *</label><input id="fTitle" value="${escapeHtml(data?.title||'')}"></div>`;
+      if (isBook) {
+        html += `<div class="form-group"><label>作者</label><input id="fAuthor" value="${escapeHtml(data?.author||'')}"></div>`;
+        html += `<div class="form-group"><label>阅读状态</label><select id="fStatus"><option value="想读" ${data?.readingStatus==='想读'?'selected':''}>想读</option><option value="在读" ${data?.readingStatus==='在读'?'selected':''}>在读</option><option value="已读" ${data?.readingStatus==='已读'?'selected':''}>已读</option></select></div>`;
+        html += `<div class="form-group" id="fDateGroup" style="display:${data?.readingStatus==='已读'?'block':'none'}"><label>读完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
+      } else {
+        html += `<div class="form-group"><label>主创</label><input id="fCreators" value="${escapeHtml(data?.creators||'')}"></div>`;
+        if (isTv) {
+          html += `<div class="form-group"><label>进度状态</label><select id="fStatus"><option value="想看" ${data?.progressStatus==='想看'?'selected':''}>想看</option><option value="在看" ${data?.progressStatus==='在看'?'selected':''}>在看</option><option value="看过" ${data?.progressStatus==='看过'?'selected':''}>看过</option></select></div>`;
+          html += `<div class="form-group" id="fProgressGroup" style="display:${data?.progressStatus==='在看'?'flex':'none'}; gap:8px;"><label style="width:100%;">当前进度</label><input type="number" id="fCurrentEp" placeholder="已看集数" value="${data?.currentEp||''}" style="flex:1;"><input type="number" id="fTotalEp" placeholder="总集数" value="${data?.totalEp||''}" style="flex:1;"></div>`;
+          html += `<div class="form-group" id="fDateGroup" style="display:${data?.progressStatus==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
+        } else {
+          html += `<div class="form-group"><label>状态</label><select id="fStatus"><option value="想看" ${data?.status==='想看'?'selected':''}>想看</option><option value="看过" ${data?.status==='看过'?'selected':''}>看过</option></select></div>`;
+          html += `<div class="form-group" id="fDateGroup" style="display:${data?.status==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
+        }
+      }
+      html += `<div class="form-group"><label>${isBook ? '封面图' : '海报图'}</label><input type="file" id="fImageFile" accept="image/*"><br><small style="color:#a0a0a0;">或粘贴图片链接</small><input id="fImageUrl" placeholder="https://..." value="${data?.image||''}"><img class="image-preview" id="fImagePreview" src="${data?.image||''}" style="display:${data?.image?'block':'none'}"></div>`;
+      html += `<div class="form-group"><label>评分</label><div class="rating-stars" id="ratingStars">${[1,2,3,4,5].map(i => `<span data-val="${i}" class="${data?.rating >= i ? 'active' : ''}">★</span>`).join('')}</div></div>`;
+      html += `<div class="form-group"><label>短评</label><textarea id="fReview">${escapeHtml(data?.review||'')}</textarea></div>`;
+      html += `<div class="form-group"><label>标签（用逗号分隔）</label><input id="fTags" value="${escapeHtml((data?.tags||[]).join(','))}"></div>`;
+      html += `<div class="form-actions">`;
+      if (data) html += `<button class="btn btn-delete" onclick="if(deleteRecord('${data.id}'))closeModal();">删除</button>`;
+      html += `<button class="btn btn-cancel" onclick="closeModal()">取消</button>`;
+      html += `<button class="btn btn-save" onclick="saveRecord('${type}')">保存</button>`;
+      html += `</div>`;
+
+      document.getElementById('modal').innerHTML = html;
+      document.getElementById('modalOverlay').classList.remove('hidden');
+
+      // 状态切换逻辑
+      const statusSelect = document.getElementById('fStatus');
+      if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+          const dateGroup = document.getElementById('fDateGroup');
+          const progressGroup = document.getElementById('fProgressGroup');
+          if (isTv) {
+            if (dateGroup) dateGroup.style.display = this.value === '看过' ? 'block' : 'none';
+            if (progressGroup) progressGroup.style.display = this.value === '在看' ? 'flex' : 'none';
+          } else if (!isBook) {
+            if (dateGroup) dateGroup.style.display = this.value === '看过' ? 'block' : 'none';
+          } else {
+            if (dateGroup) dateGroup.style.display = this.value === '已读' ? 'block' : 'none';
+          }
+        });
+      }
+
+      // 图片预览
+      const imgFile = document.getElementById('fImageFile');
+      const imgUrl = document.getElementById('fImageUrl');
+      const imgPreview = document.getElementById('fImagePreview');
+      if (imgFile) imgFile.addEventListener('change', () => {
+        const file = imgFile.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = () => { imgPreview.src = reader.result; imgPreview.style.display = 'block'; };
+          reader.readAsDataURL(file);
+        }
+      });
+      if (imgUrl) imgUrl.addEventListener('input', () => {
+        imgPreview.src = imgUrl.value; imgPreview.style.display = imgUrl.value ? 'block' : 'none';
+      });
+
+      // 评分星星
+      document.querySelectorAll('#ratingStars span').forEach(star => {
+        star.addEventListener('click', function() {
+          const val = parseInt(this.dataset.val);
+          document.querySelectorAll('#ratingStars span').forEach((s,i) => {
+            s.classList.toggle('active', i < val);
+          });
+          this.dataset.rating = val;
+        });
+      });
+    }
+
+    function closeModal() {
+      modalOpen = false;
+      document.getElementById('modalOverlay').classList.add('hidden');
+      editingId = null;
+    }
+
+    function getFormData(type) {
+      const isBook = type === 'book';
+      const isTv = type === 'tv';
+      const statusEl = document.getElementById('fStatus');
+      const ratingStars = document.querySelectorAll('#ratingStars span.active');
+      const imageFile = document.getElementById('fImageFile')?.files[0];
+      const imageUrl = document.getElementById('fImageUrl')?.value;
+      
+      let data = {
+        type,
+        title: document.getElementById('fTitle').value.trim(),
+        rating: ratingStars.length,
+        review: document.getElementById('fReview').value.trim(),
+        tags: document.getElementById('fTags').value.split(',').map(t=>t.trim()).filter(t=>t),
+        addedAt: editingId ? (records.find(r=>r.id===editingId)?.addedAt || Date.now()) : Date.now()
+      };
+
+      if (isBook) {
+        data.author = document.getElementById('fAuthor').value.trim();
+        data.readingStatus = statusEl.value;
+        data.date = document.getElementById('fDate').value;
+      } else if (isTv) {
+        data.creators = document.getElementById('fCreators').value.trim();
+        data.progressStatus = statusEl.value;
+        data.currentEp = document.getElementById('fCurrentEp')?.value;
+        data.totalEp = document.getElementById('fTotalEp')?.value;
+        data.date = document.getElementById('fDate')?.value;
+      } else {
+        data.creators = document.getElementById('fCreators').value.trim();
+        data.status = statusEl.value;
+        data.date = document.getElementById('fDate')?.value;
+      }
+
+      // 图片处理
+      if (imageFile) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (!modalOpen) return;  // 关键修复：模态框已关闭则放弃保存
+          data.image = reader.result;
+          finalizeSave(data);
+        };
+        reader.readAsDataURL(imageFile);
+        return null; // 异步
+      } else {
+        data.image = imageUrl || '';
+        return data;
+      }
+    }
+
+    function finalizeSave(data) {
+      if (!modalOpen) return; // 再次检查
+      if (editingId) {
+        const idx = records.findIndex(r => r.id === editingId);
+        if (idx > -1) records[idx] = { ...records[idx], ...data };
+      } else {
+        data.id = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+        records.unshift(data);
+      }
+      save();
+      closeModal();
+      render();
+    }
+
+    function saveRecord(type) {
+      const data = getFormData(type);
+      if (data === null) return; // 等待图片异步
+      if (!data.title) { alert('请输入标题'); return; }
+      finalizeSave(data);
+    }
+
+    function editRecord(id) {
+      const r = records.find(r => r.id === id);
+      if (!r) return;
+      showModal(r.type, r);
+    }
+
+    // 返回布尔值以控制后续行为
+    function deleteRecord(id) {
+      if (!confirm('确定要删除这条记录吗？')) return false;
+      records = records.filter(r => r.id !== id);
+      save();
+      render();
+      return true;
+    }
+
+    // ============ 事件绑定 ============
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentTab = this.dataset.tab;
+        render();
+      });
+    });
+
+    // 添加按钮
+    document.getElementById('addBookBtn').addEventListener('click', () => showModal('book'));
+    document.getElementById('addMovieBtn').addEventListener('click', () => showModal('movie'));
+    document.getElementById('addTvBtn').addEventListener('click', () => showModal('tv'));
+
+    document.getElementById('modalOverlay').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // 初始渲染
+    if (records.length === 0) {
+      const now = Date.now();
+      records = [
+        { id:'s1', type:'book', title:'局外人', author:'阿尔贝·加缪', readingStatus:'已读', date:'2026-04-15', rating:5, review:'重读依然震撼', tags:['小说','哲学'], image:'', addedAt:now-86400000*20 },
+        { id:'s2', type:'book', title:'呼吸', author:'特德·姜', readingStatus:'在读', rating:4, review:'', tags:['科幻'], image:'', addedAt:now-86400000*5 },
+        { id:'s3', type:'movie', title:'完美的日子', creators:'维姆·文德斯', status:'看过', date:'2026-04-20', rating:5, review:'平静而有力', tags:['日本','文艺'], image:'', addedAt:now-86400000*15 },
+        { id:'s4', type:'tv', title:'暗黑', creators:'巴伦·博·欧达尔', progressStatus:'看过', date:'2026-03-10', rating:5, review:'', tags:['德剧','科幻'], image:'', addedAt:now-86400000*60 },
+        { id:'s5', type:'tv', title:'人生切割术', creators:'丹·埃里克森', progressStatus:'在看', currentEp:'3', totalEp:'9', rating:4, review:'设定太妙了', tags:['美剧','悬疑'], image:'', addedAt:now-86400000*2 },
+      ];
+      save();
+    }
+    render();
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
 </body>
 </html>
