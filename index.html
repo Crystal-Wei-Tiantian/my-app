@@ -18,7 +18,7 @@
       padding-bottom: 20px;
       -webkit-tap-highlight-color: transparent;
     }
-    header, .tabs, .card, .year-header, .month-header, .empty-state, .toolbar, .filter-bar {
+    header, .tabs, .card, .year-header, .month-header, .empty-state, .filter-bar {
       user-select: none;
     }
     header {
@@ -27,6 +27,9 @@
       top: 0;
       background: #f5f0e8;
       z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     h1 {
       font-size: 28px;
@@ -34,6 +37,45 @@
       color: #6b7d6b;
       letter-spacing: 2px;
     }
+    .menu-btn {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: #8a9a82;
+      padding: 6px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    .menu-btn:hover { background: #e8e2d7; }
+    .menu-dropdown {
+      position: absolute;
+      right: 16px;
+      top: 60px;
+      background: #fdfaf5;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      padding: 8px;
+      z-index: 25;
+      display: none;
+      flex-direction: column;
+      min-width: 140px;
+    }
+    .menu-dropdown.show { display: flex; }
+    .menu-dropdown button {
+      background: none;
+      border: none;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 14px;
+      color: #4a4a4a;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .menu-dropdown button:hover { background: #f0ede5; }
     .tabs {
       display: flex;
       gap: 0;
@@ -110,22 +152,30 @@
       gap: 10px;
       margin-top: 6px;
     }
+    /* ====== 卡片升级样式 ====== */
     .card {
       background: #fdfaf5;
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 2px 0 #e0dbd0, 0 4px 8px rgba(0,0,0,0.06);
       display: flex;
-      gap: 12px;
+      gap: 14px;
       position: relative;
+      border-left: 3px solid #8a9a82;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .card:active {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 0 #d5cfc0, 0 6px 12px rgba(0,0,0,0.08);
     }
     .card img {
-      width: 60px;
-      height: 85px;
+      width: 72px;
+      height: 100px;
       object-fit: cover;
-      border-radius: 6px;
+      border-radius: 4px;
       background: #e8e2d7;
       flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08);
     }
     .card-content {
       flex: 1;
@@ -186,6 +236,7 @@
       justify-content: center;
     }
     .card-actions button:hover { color: #6b7d6b; background: #f0ede5; }
+    /* ====== 添加按钮 ====== */
     .add-btns {
       position: fixed;
       bottom: 30px;
@@ -241,6 +292,7 @@
       transition: opacity 0.15s;
     }
     .add-movie-tv button:hover { opacity: 0.9; }
+    /* ====== 模态框 ====== */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -315,22 +367,6 @@
     .btn-save { background: #8a9a82; color: white; }
     .btn-cancel { background: #e8e2d7; color: #6a6a6a; }
     .btn-delete { background: #e0c5c0; color: #8a4a4a; }
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
-    .toolbar button {
-      font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 14px;
-      border: 1px solid #d5cfc4;
-      background: #fdfaf5;
-      color: #6a6a6a;
-      cursor: pointer;
-    }
-    .toolbar button:hover { background: #f0ede5; }
     .empty-state {
       text-align: center;
       padding: 60px 20px;
@@ -347,12 +383,20 @@
 <body>
   <header>
     <h1>书影</h1>
-    <div class="tabs">
-      <button class="tab active" data-tab="books">📚 书架</button>
-      <button class="tab" data-tab="media">🎬 影库</button>
+    <div style="position: relative;">
+      <button class="menu-btn" id="menuBtn">⚙️</button>
+      <div class="menu-dropdown" id="menuDropdown">
+        <button onclick="exportData(); toggleMenu();">📤 导出备份</button>
+        <button onclick="document.getElementById('importFile').click(); toggleMenu();">📥 导入备份</button>
+      </div>
     </div>
   </header>
+  <div class="tabs">
+    <button class="tab active" data-tab="books">📚 书架</button>
+    <button class="tab" data-tab="media">🎬 影库</button>
+  </div>
   <main id="main-content"></main>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this.files[0])">
   
   <div class="add-btns" id="addBtns">
     <button class="add-btn" id="addBookBtn">+</button>
@@ -375,7 +419,6 @@
     let editingId = null;
     let modalOpen = false;
 
-    // 筛选状态：{ books: { status: 'all'|'想读'|'在读'|'已读' }, media: { type: 'all'|'movie'|'tv', status: 'all'|'想看'|'在看'|'看过' } }
     let filters = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{"books":{"status":"all"},"media":{"type":"all","status":"all"}}');
 
     function save() {
@@ -410,6 +453,19 @@
       };
       reader.readAsText(file);
     }
+
+    // ============ 菜单切换 ============
+    function toggleMenu() {
+      document.getElementById('menuDropdown').classList.toggle('show');
+    }
+
+    document.getElementById('menuBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMenu();
+    });
+    document.addEventListener('click', () => {
+      document.getElementById('menuDropdown').classList.remove('show');
+    });
 
     // ============ 渲染 ============
     function getRecordsForTab() {
@@ -470,22 +526,20 @@
       let meta = '';
       if (r.type === 'book') meta = r.author || '';
       else if (r.type === 'movie' || r.type === 'tv') meta = r.creators || '';
-      // 电视剧进度修复
-      if (r.type === 'tv' && r.currentEp && String(r.currentEp).trim() !== '') {
+      if (r.type === 'tv' && r.progressStatus === '在看' && r.currentEp && String(r.currentEp).trim() !== '') {
         let progressStr = `已看${r.currentEp}集`;
         if (r.totalEp && String(r.totalEp).trim() !== '') {
           progressStr += `/${r.totalEp}集`;
         }
         meta += (meta ? ' · ' : '') + progressStr;
       }
-      // 标签
       let tagsHtml = '';
       if (r.tags && r.tags.length > 0) {
         tagsHtml = r.tags.map(t => `<span style="background:#e8e2d7;color:#6a6a6a;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:4px;">${escapeHtml(t)}</span>`).join('');
       }
       return `
         <div class="card" data-id="${r.id}">
-          <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 60 85%22><rect fill=%22%23e8e2d7%22 width=%2260%22 height=%2285%22/><text x=%2230%22 y=%2245%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2212%22>暂无</text></svg>'}" alt="">
+          <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 72 100%22><rect fill=%22%23e8e2d7%22 width=%2272%22 height=%22100%22/><text x=%2236%22 y=%2252%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2212%22>暂无</text></svg>'}" alt="">
           <div class="card-content">
             <div class="card-title">${escapeHtml(r.title)}</div>
             <div class="card-meta">
@@ -515,14 +569,12 @@
           html += `<button class="filter-btn ${filters.books.status === s ? 'active' : ''}" data-filter="books-status" data-value="${s}">${labels[i]}</button>`;
         });
       } else {
-        // 类型筛选
         const types = ['all','movie','tv'];
         const typeLabels = ['全部','🎬 电影','📺 电视剧'];
         types.forEach((t, i) => {
           html += `<button class="filter-btn ${filters.media.type === t ? 'active' : ''}" data-filter="media-type" data-value="${t}">${typeLabels[i]}</button>`;
         });
         html += '<span style="color:#d5cfc4;margin:0 4px;">|</span>';
-        // 状态筛选
         const statuses = ['all','想看','在看','看过'];
         const statusLabels = ['全部','想看','在看','看过'];
         statuses.forEach((s, i) => {
@@ -540,13 +592,7 @@
       recs = applyFilters(recs);
       const groups = groupByYearMonth(recs);
       
-      let html = '<div class="toolbar">';
-      html += '<button onclick="exportData()">📤 导出备份</button>';
-      html += '<button onclick="document.getElementById(\'importFile\').click()">📥 导入备份</button>';
-      html += '</div>';
-      html += '<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this.files[0])">';
-      
-      // 筛选栏
+      let html = '';
       html += renderFilterBar();
       
       if (groups.length === 0) {
@@ -569,7 +615,6 @@
       }
       main.innerHTML = html;
 
-      // 绑定筛选按钮事件
       main.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
           const filter = this.dataset.filter;
@@ -586,7 +631,6 @@
         });
       });
 
-      // 切换底部添加按钮
       document.getElementById('addBookBtn').classList.toggle('hidden', currentTab !== 'books');
       document.getElementById('addMovieTvBtns').classList.toggle('hidden', currentTab !== 'media');
     }
@@ -618,8 +662,7 @@
         html += `<div class="form-group"><label>主创</label><input id="fCreators" value="${escapeHtml(data?.creators||'')}"></div>`;
         if (isTv) {
           html += `<div class="form-group"><label>进度状态</label><select id="fStatus"><option value="想看" ${data?.progressStatus==='想看'?'selected':''}>想看</option><option value="在看" ${data?.progressStatus==='在看'?'selected':''}>在看</option><option value="看过" ${data?.progressStatus==='看过'?'selected':''}>看过</option></select></div>`;
-          html += `<div class="form-group" id="fProgressGroup" style="display:${data?.progressStatus==='在看'?'flex':'none'}; gap:8px;"><label style="width:100%;">当前进度</label><input type="number" id="fCurrentEp" placeholder="已看集数" value="${data?.currentEp||''}" style="flex:1;"><input type="number" id="fTotalEp" placeholder="总集数" value="${data?.totalEp||''}" style="flex:1;"></div>`;
-          html += `<div class="form-group" id="fDateGroup" style="display:${data?.progressStatus==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
+          html += `<div class="form-group" id="fProgressGroup" style="display:${data?.progressStatus==='在看'?'flex':'none'}; gap:8px;"><label style="width:100%;">当前进度</label><input type="number" id="fCurrentEp" placeholder="已看集数" value="${data?.currentEp ?? ''}" style="flex:1;"><input type="number" id="fTotalEp" placeholder="总集数" value="${data?.totalEp ?? ''}" style="flex:1;"></div>`;          html += `<div class="form-group" id="fDateGroup" style="display:${data?.progressStatus==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
         } else {
           html += `<div class="form-group"><label>状态</label><select id="fStatus"><option value="想看" ${data?.status==='想看'?'selected':''}>想看</option><option value="看过" ${data?.status==='看过'?'selected':''}>看过</option></select></div>`;
           html += `<div class="form-group" id="fDateGroup" style="display:${data?.status==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
