@@ -205,9 +205,9 @@
       border-radius: 10px;
       font-weight: 500;
     }
-    .status-want { background: #f2e0d2; color: #8b6f5e; }   /* 暖杏色，未开始 */
-    .status-doing { background: #a3b899; color: #3a4a2f; }  /* 灰绿色，进行中 */
-    .status-done { background: #7f9a7f; color: #ffffff; }    /* 深绿，已完成，白字更清晰 */
+    .status-want { background: #e8ddd0; color: #6a5a4a; }
+    .status-doing { background: #bfcdb5; color: #4a5a3f; }
+    .status-done { background: #8aab8a; color: #3a4a32; }
     .stars { color: #c9a96e; font-size: 14px; letter-spacing: 1px; }
     .card-review {
       font-size: 12px;
@@ -333,20 +333,7 @@
       color: #8a8a8a;
       margin-bottom: 4px;
     }
-       /* 确保数字输入框的文字清晰可见 */
-    .form-group input[type="number"] {
-      -webkit-appearance: none;
-      appearance: none;
-      color: #3a3a3a;
-      background: #fffdf7;
-      font-size: 16px;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-    }
-    .form-group input[type="number"]::placeholder {
-      color: #b0a89a;
-      font-weight: 400;
-    }
+
     .form-group textarea { resize: vertical; min-height: 60px; }
     .form-group input[type="file"] { padding: 8px; }
     .image-preview {
@@ -356,6 +343,15 @@
       border-radius: 6px;
       background: #e8e2d7;
       margin-top: 6px;
+    }
+        /* 去除数字输入框微调按钮（兜底） */
+    .form-group input[type="number"]::-webkit-outer-spin-button,
+    .form-group input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .form-group input[type="number"] {
+      -moz-appearance: textfield;
     }
     .form-actions {
       display: flex;
@@ -575,13 +571,16 @@
           html += `<button class="filter-btn ${filters.books.status === s ? 'active' : ''}" data-filter="books-status" data-value="${s}">${labels[i]}</button>`;
         });
     } else {
-      html += '<div style="display:flex; align-items:center; gap:4px; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;">';
+      // 第一行：类型
+      html += '<div style="display:flex; gap:6px; margin-bottom:6px;">';
       const types = ['all','movie','tv'];
       const typeLabels = ['全部','🎬 电影','📺 电视剧'];
       types.forEach((t, i) => {
         html += `<button class="filter-btn ${filters.media.type === t ? 'active' : ''}" data-filter="media-type" data-value="${t}">${typeLabels[i]}</button>`;
       });
-      html += '<span style="color:#d5cfc4;margin:0 2px;flex-shrink:0;">|</span>';
+      html += '</div>';
+      // 第二行：状态
+      html += '<div style="display:flex; gap:6px;">';
       const statuses = ['all','想看','在看','看过'];
       const statusLabels = ['全部','想看','在看','看过'];
       statuses.forEach((s, i) => {
@@ -669,8 +668,19 @@
       } else {
         html += `<div class="form-group"><label>主创</label><input id="fCreators" value="${escapeHtml(data?.creators||'')}"></div>`;
         if (isTv) {
+          // 电视剧：进度状态
           html += `<div class="form-group"><label>进度状态</label><select id="fStatus"><option value="想看" ${data?.progressStatus==='想看'?'selected':''}>想看</option><option value="在看" ${data?.progressStatus==='在看'?'selected':''}>在看</option><option value="看过" ${data?.progressStatus==='看过'?'selected':''}>看过</option></select></div>`;
-          html += `<div class="form-group" id="fProgressGroup" style="display:${data?.progressStatus==='在看'?'flex':'none'}; gap:8px;"><label style="width:100%;">当前进度</label><input type="number" id="fCurrentEp" placeholder="已看集数" value="${data?.currentEp ?? ''}" style="flex:1; min-height: 44px; padding: 10px 12px; font-size: 18px;"><input type="number" id="fTotalEp" placeholder="总集数" value="${data?.totalEp ?? ''}" style="flex:1; min-height: 44px; padding: 10px 12px; font-size: 18px;"></div>`;        } else {
+          html += `<div class="form-group" id="fProgressGroup" style="display:${data?.progressStatus==='在看'?'block':'none'};">
+            <label style="margin-bottom:4px;">当前进度</label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="text" inputmode="numeric" id="fCurrentEp" placeholder="已看集数" value="${data?.currentEp ?? ''}" style="width:60px;">
+              <span style="color:#8a8a8a; font-size:14px;">/</span>
+              <input type="text" inputmode="numeric" id="fTotalEp" placeholder="总集数" value="${data?.totalEp ?? ''}" style="width:60px;">
+            </div>
+          </div>`;          
+          html += `<div class="form-group" id="fDateGroup" style="display:${data?.progressStatus==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
+        } else {
+          // 电影：状态
           html += `<div class="form-group"><label>状态</label><select id="fStatus"><option value="想看" ${data?.status==='想看'?'selected':''}>想看</option><option value="看过" ${data?.status==='看过'?'selected':''}>看过</option></select></div>`;
           html += `<div class="form-group" id="fDateGroup" style="display:${data?.status==='看过'?'block':'none'}"><label>看完日期</label><input type="date" id="fDate" value="${data?.date||''}"></div>`;
         }
