@@ -254,6 +254,11 @@
       justify-content: center;
     }
     .card-actions button:hover { color: #6b7d6b; background: #f0ede5; }
+    
+    .card-btn-delete {
+      font-size: 14px;           /* 比原来的18px小 */
+      padding: 4px 6px;
+    }
     /* ====== 添加按钮 ====== */
     .add-btns {
       position: fixed;
@@ -560,13 +565,22 @@
       }
       return `
         <div class="card" data-id="${r.id}" onclick="showDetail('${r.id}')">
-          <img src="${r.image || '...'}" alt="">
+          <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 72 100%22><rect fill=%22%23e8e2d7%22 width=%2272%22 height=%22100%22/><text x=%2236%22 y=%2252%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2212%22>暂无</text></svg>'}" alt="">
           <div class="card-content">
-            ...
+            <div class="card-title">${escapeHtml(r.title)}</div>
+            <div class="card-meta">
+              ${escapeHtml(meta)}
+              ${tagsHtml ? '<br>' + tagsHtml : ''}
+            </div>
+            <div>
+              <span class="card-status ${statusClass}">${escapeHtml(statusText)}</span>
+              ${r.rating ? `<span class="stars">${starsHtml}</span>` : ''}
+            </div>
+            <div class="card-review">${escapeHtml(r.review || '')}</div>
           </div>
           <div class="card-actions">
             <button onclick="event.stopPropagation(); editRecord('${r.id}')" title="编辑">✎</button>
-            <button onclick="event.stopPropagation(); deleteRecord('${r.id}')" title="删除">✕</button>
+            <button class="card-btn-delete" onclick="event.stopPropagation(); deleteRecord('${r.id}')" title="删除">✕</button>
           </div>
         </div>
       `;
