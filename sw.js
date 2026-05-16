@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shuying-v13';
+const CACHE_NAME = 'shuying-v14';
 const urlsToCache = [
   '/my-app/',
   '/my-app/index.html',
