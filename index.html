@@ -625,7 +625,15 @@
       const statusText = r.status || (r.type === 'tv' ? r.progressStatus : r.readingStatus) || '';
       const statusClass = statusMap[statusText] || 'status-want';
       const starsHtml = r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : '';
+
       let meta = '';
+      if (r.type === 'book') meta = r.author || '';
+      else if (r.type === 'movie' || r.type === 'tv') meta = r.creators || '';
+
+      // 进度行（默认空）
+      let progressHtml = '';
+
+      // 仅电视剧“在看”时生成突出显示的进度
       if (r.type === 'tv' && r.progressStatus === '在看' && r.currentEp && String(r.currentEp).trim() !== '') {
         let progressStr = `<span style="color:#8a9a82; font-weight:600; font-size:13px;">已看${r.currentEp}</span>`;
         if (r.totalEp && String(r.totalEp).trim() !== '') {
@@ -633,14 +641,15 @@
         } else {
           progressStr += `<span style="color:#8a8a8a; font-size:12px;"> 集</span>`;
         }
-        // 将进度作为单独一行显示，而非拼接在 meta 后面
         progressHtml = `<div style="margin-top:2px;">${progressStr}</div>`;
       }
+
       // 标签
       let tagsHtml = '';
       if (r.tags && r.tags.length > 0) {
         tagsHtml = r.tags.map(t => `<span style="background:#e8e2d7;color:#6a6a6a;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:4px;">${escapeHtml(t)}</span>`).join('');
       }
+
       return `
         <div class="card" data-id="${r.id}" onclick="showDetail('${r.id}')">
           <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 72 100%22><rect fill=%22%23e8e2d7%22 width=%2272%22 height=%22100%22/><text x=%2236%22 y=%2252%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2212%22>暂无</text></svg>'}" referrerpolicy="no-referrer" style="width:72px; height:100px; object-fit:cover; border-radius:4px; background:#e8e2d7; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08);">
@@ -648,7 +657,7 @@
             <div class="card-title">${escapeHtml(r.title)}</div>
             <div class="card-meta">
               ${escapeHtml(meta)}
-              ${progressHtml || ''}
+              ${progressHtml}
               ${tagsHtml ? '<br>' + tagsHtml : ''}
             </div>
             <div>
