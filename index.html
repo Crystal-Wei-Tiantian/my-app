@@ -442,6 +442,7 @@
   <script>
     // ============ 数据层 ============
     const FILTER_STORAGE_KEY = 'shuying_filters';
+    let filters = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{"books":{"status":"all"},"media":{"type":"all","status":"all"}}');
     // ========== IndexedDB 存储层 ==========
     const DB_NAME = 'ShuyingDB';
     const DB_VERSION = 1;
@@ -463,6 +464,7 @@
           resolve(db);
         };
         request.onerror = (event) => {
+          console.error('IndexedDB 打开失败:', event.target.error); // 加入这一行
           reject(event.target.error);
         };
       });
@@ -503,10 +505,12 @@
     let editingId = null;
     let modalOpen = false;
 
-    let filters = JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '{"books":{"status":"all"},"media":{"type":"all","status":"all"}}');
-
     function save() {
      saveRecordsToDB(records);
+    }
+
+    function saveFilters() {
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
     }
 
     function exportData() {
@@ -554,7 +558,18 @@
       return records.filter(r => r.type === 'movie' || r.type === 'tv');
     }
 
-    function applyFilters(recs) {
+    function applyFilter(filter, value) {
+      if (filter === 'books-status') {
+        filters.books.status = value;
+      } else if (filter === 'media-type') {
+        filters.media.type = value;
+      } else if (filter === 'media-status') {
+        filters.media.status = value;
+      }
+      saveFilters();
+      render();
+    }
+    function applyFiltersToData(recs) {
       if (currentTab === 'books') {
         const status = filters.books.status;
         if (status !== 'all') {
@@ -575,7 +590,6 @@
       }
       return recs;
     }
-
     function groupByYearMonth(recs) {
       const groups = {};
       recs.forEach(r => {
@@ -644,39 +658,40 @@
     function renderFilterBar() {
       let html = '<div class="filter-bar">';
       if (currentTab === 'books') {
-        const statuses = ['all','想读','在读','已读'];
-        const labels = ['全部','想读','在读','已读'];
+        const statuses = ['all', '想读', '在读', '已读'];
+        const labels = ['全部', '想读', '在读', '已读'];
         statuses.forEach((s, i) => {
-          html += `<button class="filter-btn ${filters.books.status === s ? 'active' : ''}" data-filter="books-status" data-value="${s}">${labels[i]}</button>`;
+          html += `<button class="filter-btn ${filters.books.status === s ? 'active' : ''}" data-filter="books-status" data-value="${s}" onclick="applyFilter('books-status', '${s}')">${labels[i]}</button>`;
         });
-    } else {
-      // 第一行：类型
-      html += '<div style="display:flex; gap:6px; margin-bottom:6px;">';
-      const types = ['all','movie','tv'];
-      const typeLabels = ['全部','🎬 电影','📺 电视剧'];
-      types.forEach((t, i) => {
-        html += `<button class="filter-btn ${filters.media.type === t ? 'active' : ''}" data-filter="media-type" data-value="${t}">${typeLabels[i]}</button>`;
-      });
-      html += '</div>';
-      // 第二行：状态
-      html += '<div style="display:flex; gap:6px;">';
-      const statuses = ['all','想看','在看','看过'];
-      const statusLabels = ['全部','想看','在看','看过'];
-      statuses.forEach((s, i) => {
-        html += `<button class="filter-btn ${filters.media.status === s ? 'active' : ''}" data-filter="media-status" data-value="${s}">${statusLabels[i]}</button>`;
-      });
-      html += '</div>';
-    }
+      } else {
+        // 第一行：类型
+        html += '<div style="display:flex; gap:6px; margin-bottom:6px;">';
+        const types = ['all', 'movie', 'tv'];
+        const typeLabels = ['全部', '🎬 电影', '📺 电视剧'];
+        types.forEach((t, i) => {
+          html += `<button class="filter-btn ${filters.media.type === t ? 'active' : ''}" data-filter="media-type" data-value="${t}" onclick="applyFilter('media-type', '${t}')">${typeLabels[i]}</button>`;
+        });
+        html += '</div>';
+        // 第二行：状态
+        html += '<div style="display:flex; gap:6px;">';
+        const statuses = ['all', '想看', '在看', '看过'];
+        const statusLabels = ['全部', '想看', '在看', '看过'];
+        statuses.forEach((s, i) => {
+          html += `<button class="filter-btn ${filters.media.status === s ? 'active' : ''}" data-filter="media-status" data-value="${s}" onclick="applyFilter('media-status', '${s}')">${statusLabels[i]}</button>`;
+        });
+        html += '</div>';
+      }
       html += '</div>';
       return html;
     }
 
     function render() {
+      if (window._rendering) return;   // 防止递归
       document.getElementById('stickyFilters').innerHTML = renderFilterBar();
       const main = document.getElementById('main-content');
       let recs = getRecordsForTab();
       recs.sort((a,b) => (b.addedAt||0) - (a.addedAt||0));
-      recs = applyFilters(recs);
+      recs = applyFiltersToData(recs);
       const groups = groupByYearMonth(recs);
       
       let html = '';
@@ -703,29 +718,7 @@
 
       document.getElementById('addBookBtn').classList.toggle('hidden', currentTab !== 'books');
       document.getElementById('addMovieTvBtns').classList.toggle('hidden', currentTab !== 'media');
-            // 确保筛选按钮事件只绑定一次
-      if (!window._filterBound) {
-        const sticky = document.getElementById('stickyFilters');
-        if (sticky) {
-          sticky.addEventListener('click', function(e) {
-            const btn = e.target.closest('.filter-btn');
-            if (!btn) return;
-            const filter = btn.dataset.filter;
-            const value = btn.dataset.value;
-            if (filter === 'books-status') {
-              filters.books.status = value;
-            } else if (filter === 'media-type') {
-              filters.media.type = value;
-            } else if (filter === 'media-status') {
-              filters.media.status = value;
-            }
-            saveFilters();
-            render();
-          });
-          window._filterBound = true;
-        }
       }
-    }
 
     function toggleGroup(id) {
       document.getElementById(id).classList.toggle('collapsed');
@@ -1318,11 +1311,25 @@
       render();
     }).catch(err => {
       console.error('数据库初始化失败', err);
-      alert('应用初始化失败，请检查浏览器是否支持 IndexedDB。');
+      alert('应用初始化失败：' + err.message + '\n请检查浏览器是否处于隐私模式，或尝试清除浏览器数据。');
     });
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        // 检测到新版本后提示用户更新
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // 新 SW 已就绪，提示用户刷新
+              if (confirm('应用有新版本，是否立即刷新？')) {
+                newWorker.postMessage('SKIP_WAITING');
+                window.location.reload();
+              }
+            }
+          });
+        });
+      });
     }
   </script>
 </body>
