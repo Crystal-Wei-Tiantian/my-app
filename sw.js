@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shuying-v20'; // 每次更新 index.html 必须递增
+const CACHE_NAME = 'shuying-v21'; // 每次更新 index.html 必须递增
 
 // 动态获取当前应用的基础路径
 const basePath = self.location.pathname.replace(/\/[^/]*$/, '') || '';

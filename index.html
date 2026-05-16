@@ -626,15 +626,15 @@
       const statusClass = statusMap[statusText] || 'status-want';
       const starsHtml = r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : '';
       let meta = '';
-      if (r.type === 'book') meta = r.author || '';
-      else if (r.type === 'movie' || r.type === 'tv') meta = r.creators || '';
-      // 电视剧进度显示（仅“在看”时）
       if (r.type === 'tv' && r.progressStatus === '在看' && r.currentEp && String(r.currentEp).trim() !== '') {
-        let progressStr = `已看${r.currentEp}集`;
+        let progressStr = `<span style="color:#8a9a82; font-weight:600; font-size:13px;">已看${r.currentEp}</span>`;
         if (r.totalEp && String(r.totalEp).trim() !== '') {
-          progressStr += `/${r.totalEp}集`;
+          progressStr += `<span style="color:#8a8a8a; font-size:12px;"> / ${r.totalEp} 集</span>`;
+        } else {
+          progressStr += `<span style="color:#8a8a8a; font-size:12px;"> 集</span>`;
         }
-        meta += (meta ? ' · ' : '') + progressStr;
+        // 将进度作为单独一行显示，而非拼接在 meta 后面
+        progressHtml = `<div style="margin-top:2px;">${progressStr}</div>`;
       }
       // 标签
       let tagsHtml = '';
@@ -648,6 +648,7 @@
             <div class="card-title">${escapeHtml(r.title)}</div>
             <div class="card-meta">
               ${escapeHtml(meta)}
+              ${progressHtml || ''}
               ${tagsHtml ? '<br>' + tagsHtml : ''}
             </div>
             <div>
@@ -955,43 +956,52 @@
       const startDate = new Date(year, startMonth - 1, 1);
       const endDate = new Date(year, endMonth, 0, 23, 59, 59);
 
-      // 筛选该季度添加的、已看完的电视剧
+      // 筛选该季度已看完的电视剧
       const tvRecords = records.filter(r => {
-        if (r.type !== 'tv') return false;               // 只要电视剧
-        if (r.progressStatus !== '看过') return false;    // 只要已看完的
+        if (r.type !== 'tv') return false;
+        if (r.progressStatus !== '看过') return false;
         const added = new Date(r.addedAt || 0);
         return added >= startDate && added <= endDate;
       });
 
       if (tvRecords.length === 0) {
-        alert('该季度没有追剧记录');
+        alert('该季度没有已看完的追剧记录');
         closeModal();
         return;
       }
 
-      // 按标签分组
+      // 地区标签白名单（顺序决定最终展示顺序）
+      const regionTags = ['美剧','港剧','泰剧','台剧','英剧','韩剧','澳剧','内地剧'];
+
+      // 按地区分组，每部剧只归入一个组
       const groups = {};
       tvRecords.forEach(r => {
+        let matched = false;
         if (r.tags && r.tags.length > 0) {
-          r.tags.forEach(tag => {
-            if (!groups[tag]) groups[tag] = [];
-            groups[tag].push(r);
-          });
-        } else {
+          for (const tag of r.tags) {
+            if (regionTags.includes(tag)) {
+              if (!groups[tag]) groups[tag] = [];
+              groups[tag].push(r);
+              matched = true;
+              break; // 只归入第一个匹配的地区标签，不重复
+            }
+          }
+        }
+        if (!matched) {
           if (!groups['其他']) groups['其他'] = [];
           groups['其他'].push(r);
         }
       });
 
-      // 组内按评分降序
-      Object.keys(groups).forEach(key => {
-        groups[key].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      // 按白名单顺序排序分组，最后放「其他」
+      const groupNames = [];
+      regionTags.forEach(tag => {
+        if (groups[tag]) groupNames.push(tag);
       });
-
-      const groupNames = Object.keys(groups).sort();
+      if (groups['其他']) groupNames.push('其他');
       const quarterLabel = `Q${quarter} (${startMonth}-${endMonth}月)`;
 
-      // 构建总结 HTML（好看版）
+      // 构建总结 HTML
       let html = `
         <div style="text-align:center; margin-bottom:20px;">
           <div style="font-size:20px; color:#6b7d6b; font-weight:500;">📺 ${year}年 ${quarterLabel}</div>
@@ -1009,7 +1019,10 @@
           const stars = r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : '';
           html += `
             <div style="display:flex; gap:10px; align-items:flex-start; margin:10px 0; padding:10px; background:#faf6ee; border-radius:10px;">
-                <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 45 65%22><rect fill=%22%23e8e2d7%22 width=%2245%22 height=%2265%22/><text x=%2222.5%22 y=%2235%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2210%22>暂无</text></svg>'}" referrerpolicy="no-referrer" style="width:45px; height:65px; object-fit:cover; border-radius:5px; flex-shrink:0;">                <div style="color:#c9a96e; font-size:13px; margin-top:2px;">${stars || '未评分'}</div>
+              <img src="${r.image || 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 45 65%22><rect fill=%22%23e8e2d7%22 width=%2245%22 height=%2265%22/><text x=%2222.5%22 y=%2235%22 text-anchor=%22middle%22 fill=%22%23b0b0b0%22 font-size=%2210%22>暂无</text></svg>'}" referrerpolicy="no-referrer" style="width:45px; height:65px; object-fit:cover; border-radius:5px; flex-shrink:0;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-weight:500; font-size:15px; color:#3a3a3a;">${escapeHtml(r.title)}</div>
+                <div style="color:#c9a96e; font-size:13px; margin-top:2px;">${stars || '未评分'}</div>
                 ${r.review ? `<div style="font-size:12px; color:#6a6a6a; margin-top:3px; line-height:1.5;">${escapeHtml(r.review)}</div>` : ''}
               </div>
             </div>
