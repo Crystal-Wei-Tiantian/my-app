@@ -703,6 +703,28 @@
 
       document.getElementById('addBookBtn').classList.toggle('hidden', currentTab !== 'books');
       document.getElementById('addMovieTvBtns').classList.toggle('hidden', currentTab !== 'media');
+            // 确保筛选按钮事件只绑定一次
+      if (!window._filterBound) {
+        const sticky = document.getElementById('stickyFilters');
+        if (sticky) {
+          sticky.addEventListener('click', function(e) {
+            const btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+            const filter = btn.dataset.filter;
+            const value = btn.dataset.value;
+            if (filter === 'books-status') {
+              filters.books.status = value;
+            } else if (filter === 'media-type') {
+              filters.media.type = value;
+            } else if (filter === 'media-status') {
+              filters.media.status = value;
+            }
+            saveFilters();
+            render();
+          });
+          window._filterBound = true;
+        }
+      }
     }
 
     function toggleGroup(id) {
@@ -1261,26 +1283,6 @@
       if (e.target === this) closeModal();
     });
 
-        // 委托筛选按钮点击事件（一次性绑定，早于初始化）
-    document.getElementById('stickyFilters').addEventListener('click', function(e) {
-      const btn = e.target.closest('.filter-btn');
-      if (!btn) return;
-      const filter = btn.dataset.filter;
-      const value = btn.dataset.value;
-      if (filter === 'books-status') {
-        filters.books.status = value;
-      } else if (filter === 'media-type') {
-        filters.media.type = value;
-      } else if (filter === 'media-status') {
-        filters.media.status = value;
-      }
-      saveFilters();
-      render();
-    });
-
-    // 异步初始化：打开数据库 → 迁移旧数据 → 加载记录 → 渲染
-    openDB().then(() => {
-      ...
     // 异步初始化：打开数据库 → 迁移旧数据 → 加载记录 → 渲染
     openDB().then(() => {
       // 检查并迁移 localStorage 旧数据
