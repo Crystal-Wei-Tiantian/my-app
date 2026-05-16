@@ -1,6 +1,6 @@
-const CACHE_NAME = 'shuying-v17'; // 每次更新 index.html 时递增
+const CACHE_NAME = 'shuying-v19'; // 每次更新 index.html 必须递增
 
-// 动态获取当前应用的基础路径（GitHub Pages 下是 '/my-app/'，本地可能是 '/'）
+// 动态获取当前应用的基础路径
 const basePath = self.location.pathname.replace(/\/[^/]*$/, '') || '';
 
 const urlsToCache = [
@@ -8,16 +8,14 @@ const urlsToCache = [
   basePath + '/index.html',
   basePath + '/manifest.json',
   basePath + '/icon.png'
-].filter(url => !url.endsWith('undefined')); // 过滤掉异常路径
+];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return Promise.allSettled(
-        urlsToCache.map(url => cache.add(url).catch(err => {
-          console.warn('缓存失败，忽略:', url, err);
-        }))
+        urlsToCache.map(url => cache.add(url).catch(err => console.warn('缓存失败，忽略:', url, err)))
       );
     })
   );
@@ -33,7 +31,6 @@ self.addEventListener('activate', event => {
   );
 });
 
-// HTML 文件网络优先，保证内容最新；其他文件缓存优先
 self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -46,7 +43,6 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// 监听页面发来的更新指令（可选，用于手动刷新）
 self.addEventListener('message', event => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting();
