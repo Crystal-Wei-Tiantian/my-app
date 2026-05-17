@@ -656,9 +656,8 @@
           <div class="card-content">
             <div class="card-title">${escapeHtml(r.title)}</div>
             <div class="card-meta">
-              ${escapeHtml(meta)}
+              ${tagsHtml ? tagsHtml + ' ' : ''}${escapeHtml(meta)}
               ${progressHtml}
-              ${tagsHtml ? '<br>' + tagsHtml : ''}
             </div>
             <div>
               <span class="card-status ${statusClass}">${escapeHtml(statusText)}</span>
@@ -667,7 +666,7 @@
             <div class="card-review">${escapeHtml(r.review || '')}</div>
           </div>
           <div class="card-actions">
-            <button onclick="event.stopPropagation(); editRecord('${r.id}')" title="编辑">✎</button>
+            <button onclick="event.stopPropagation(); editRecord('${r.id}')" title="编辑" style="font-size:13px; font-weight:500; color:#6b7d6b;">编辑</button>
             <button class="card-btn-delete" onclick="event.stopPropagation(); deleteRecord('${r.id}')" title="删除">✕</button>
           </div>
         </div>
